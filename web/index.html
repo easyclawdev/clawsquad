@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClawSquad - AI Agent Collaboration</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; }
+        .app { max-width: 100%; min-height: 100vh; display: flex; flex-direction: column; }
+        /* Header */
+        .header { background: #1e293b; padding: 1rem; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.5rem; font-weight: bold; color: #60a5fa; }
+        .status { display: flex; align-items: center; gap: 0.5rem; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; }
+        /* Main content */
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        /* Tabs */
+        .tabs { display: flex; background: #1e293b; border-bottom: 1px solid #334155; }
+        .tab { flex: 1; padding: 1rem; text-align: center; border-bottom: 3px solid transparent; cursor: pointer; }
+        .tab.active { border-bottom-color: #60a5fa; color: #60a5fa; }
+        /* Chat area */
+        .chat-area { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+        .message { background: #1e293b; border-radius: 12px; padding: 1rem; max-width: 85%; }
+        .message.self { align-self: flex-end; background: #1d4ed8; }
+        .message-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem; color: #94a3b8; }
+        .message-sender { font-weight: bold; color: #60a5fa; }
+        .message-content { line-height: 1.5; }
+        .mention { color: #fbbf24; font-weight: bold; }
+        /* Online agents */
+        .agents-list { padding: 1rem; background: #1e293b; border-radius: 12px; margin: 1rem; }
+        .agent { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border-bottom: 1px solid #334155; }
+        .agent:last-child { border-bottom: none; }
+        .agent-avatar { width: 40px; height: 40px; border-radius: 50%; background: #475569; display: flex; align-items: center; justify-content: center; }
+        .agent-info { flex: 1; }
+        .agent-name { font-weight: bold; }
+        .agent-status { font-size: 0.875rem; color: #94a3b8; }
+        /* Input area */
+        .input-area { padding: 1rem; background: #1e293b; border-top: 1px solid #334155; display: flex; gap: 0.5rem; }
+        .message-input { flex: 1; padding: 0.75rem; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; }
+        .send-btn { padding: 0.75rem 1.5rem; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        /* Tasks */
+        .tasks-list { padding: 1rem; }
+        .task { background: #1e293b; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
+        .task-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
+        .task-title { font-weight: bold; color: #60a5fa; }
+        .task-status { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; }
+        .status-pending { background: #f59e0b; color: #000; }
+        .status-in-progress { background: #3b82f6; color: white; }
+        .status-completed { background: #10b981; color: white; }
+        /* Mobile optimizations */
+        @media (max-width: 640px) {
+            .message { max-width: 90%; }
+            .input-area { flex-direction: column; }
+            .send-btn { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="header">
+            <div class="logo">🦞 ClawSquad</div>
+            <div class="status">
+                <div class="status-dot"></div>
+                <span id="connection-status">Connecting...</span>
+            </div>
+        </div>
+        <div class="main">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('chat')">💬 Chat</div>
+                <div class="tab" onclick="switchTab('agents')">👥 Agents</div>
+                <div class="tab" onclick="switchTab('tasks')">✅ Tasks</div>
+            </div>
+            <!-- Chat Tab -->
+            <div id="chat-tab" class="tab-content">
+                <div class="chat-area" id="message-container">
+                    <div class="message">
+                        <div class="message-header">
+                            <span class="message-sender">System</span>
+                            <span>Just now</span>
+                        </div>
+                        <div class="message-content">Welcome to ClawSquad! Start collaborating with your AI agents.</div>
+                    </div>
+                </div>
+                <div class="input-area">
+                    <input type="text" class="message-input" id="message-input" placeholder="Type a message... Use @ to mention agents" />
+                    <button class="send-btn" onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+            <!-- Agents Tab -->
+            <div id="agents-tab" class="tab-content" style="display: none;">
+                <div class="agents-list" id="agents-container">
+                    <div class="agent">
+                        <div class="agent-avatar">🤖</div>
+                        <div class="agent-info">
+                            <div class="agent-name">xiaohong</div>
+                            <div class="agent-status">Online</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Tasks Tab -->
+            <div id="tasks-tab" class="tab-content" style="display: none;">
+                <div class="tasks-list" id="tasks-container">
+                    <div class="task">
+                        <div class="task-header">
+                            <div class="task-title">Implement WebSocket server</div>
+                            <div class="task-status status-completed">Completed</div>
+                        </div>
+                        <div>Assigned to: @xiaohong</div>
+                        <div>Created by: System</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let ws = null;
+        let agentId = 'user_' + Math.random().toString(36).substr(2, 9);
+        let currentTab = 'chat';
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = window.location.hostname || 'localhost';
+            const port = window.location.port || '8000';
+            const wsUrl = `${protocol}//${host}:${port}/ws/${agentId}`;
+            ws = new WebSocket(wsUrl);
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                document.getElementById('connection-status').textContent = 'Connected';
+                document.querySelector('.status-dot').style.background = '#10b981';
+            };
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleMessage(data);
+            };
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                document.getElementById('connection-status').textContent = 'Disconnected';
+                document.querySelector('.status-dot').style.background = '#ef4444';
+                setTimeout(connectWebSocket, 3000);
+            };
+            ws.onerror = (error) => { console.error('WebSocket error:', error); };
+        }
+        function handleMessage(data) {
+            switch(data.type) {
+                case 'message': addMessage(data.agent_id, data.content, data.timestamp, data.mentions); break;
+                case 'agent_joined': addSystemMessage(`${data.agent_id} joined the chat`); break;
+                case 'agent_left': addSystemMessage(`${data.agent_id} left the chat`); break;
+                case 'mention': alert(`You were mentioned by ${data.from}: ${data.content}`); break;
+                case 'task_assigned': alert(`New task assigned: ${data.task_title}`); break;
+            }
+        }
+        function addMessage(sender, content, timestamp, mentions = []) {
+            const container = document.getElementById('message-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender === agentId ? 'self' : ''}`;
+            let formattedContent = content;
+            mentions.forEach(mention => { formattedContent = formattedContent.replace(new RegExp(`@${mention}`, 'g'), `<span class="mention">@${mention}</span>`); });
+            const time = new Date(timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            messageDiv.innerHTML = `<div class="message-header"><span class="message-sender">${sender}</span><span>${time}</span></div><div class="message-content">${formattedContent}</div>`;
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+        function addSystemMessage(content) {
+            const container = document.getElementById('message-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.innerHTML = `<div class="message-header"><span class="message-sender">System</span><span>${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></div><div class="message-content">${content}</div>`;
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const content = input.value.trim();
+            if (!content || !ws || ws.readyState !== WebSocket.OPEN) return;
+            ws.send(JSON.stringify({ type: 'message', content: content, room: 'general' }));
+            input.value = '';
+            input.focus();
+        }
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelector(`.tab[onclick*="${tabName}"]`).classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(content => content.style.display = 'none');
+            document.getElementById(`${tabName}-tab`).style.display = 'block';
+            currentTab = tabName;
+        }
+        document.getElementById('message-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+        window.addEventListener('load', () => { connectWebSocket(); document.querySelector('.agent-name').textContent = agentId; });
+    </script>
+</body>
+</html>
