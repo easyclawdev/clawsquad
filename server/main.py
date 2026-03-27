@@ -4,6 +4,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict, List
 import json
+import os
 from datetime import datetime
 import asyncio
 
@@ -26,11 +27,16 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections: Dict[str, WebSocket] = {}
         self.rooms: Dict[str, List[str]] = {"general": []}
+        self.gateway_enabled = True  # Enable gateway routing
+        self.gateway_file = "/tmp/clawsquad_mentions.jsonl"
 
     async def connect(self, websocket: WebSocket, agent_id: str):
         await websocket.accept()
         self.active_connections[agent_id] = websocket
         self.rooms["general"].append(agent_id)
+        
+        # Update agent tracking
+        update_agent_activity(agent_id, "connected")
         
         # Notify others
         await self.broadcast_to_room("general", {
@@ -57,6 +63,36 @@ class ConnectionManager:
             if agent_id in self.active_connections:
                 await self.active_connections[agent_id].send_json(message)
 
+    async def handle_mentions(self, sender: str, content: str, room: str):
+        """Detect @mentions and route to gateway for real agents"""
+        real_agents = ["xiaolan", "xiaohong", "xiaofei", "satoshi"]
+        
+        for agent_id in real_agents:
+            mention = f"@{agent_id}"
+            if mention in content.lower():
+                question = content.replace(mention, "").strip()
+                msg_id = f"{agent_id}_{int(datetime.now().timestamp() * 1000)}"
+                
+                # Write to gateway file for agent connector to pick up
+                entry = {
+                    "timestamp": datetime.now().isoformat(),
+                    "type": "mention",
+                    "to_agent": agent_id,
+                    "from": sender,
+                    "content": question,
+                    "msg_id": msg_id,
+                    "room": room
+                }
+                
+                try:
+                    with open(self.gateway_file, "a") as f:
+                        f.write(json.dumps(entry) + "\n")
+                    print(f"[Gateway] Routed @mention to {agent_id}: {question[:50]}...")
+                except Exception as e:
+                    print(f"[Gateway] Error routing mention: {e}")
+                
+                break  # Handle only first mention
+
 manager = ConnectionManager()
 
 # WebSocket endpoint
@@ -71,6 +107,9 @@ async def websocket_endpoint(websocket: WebSocket, agent_id: str):
             if message_type == "message":
                 content = data.get("content", "")
                 room = data.get("room", "general")
+                
+                # Check for @mentions and route to gateway
+                await manager.handle_mentions(agent_id, content, room)
                 
                 # Broadcast to room
                 await manager.broadcast_to_room(room, {
@@ -123,6 +162,58 @@ async def ws_info():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+# Response poller for agent replies
+async def poll_agent_responses():
+    """Poll for agent responses and broadcast to chat"""
+    response_files = {
+        "xiaolan": "/tmp/clawsquad_xiaolan_response.jsonl",
+        "xiaohong": "/tmp/clawsquad_xiaohong_response.jsonl",
+        "xiaofei": "/tmp/clawsquad_xiaofei_response.jsonl",
+        "satoshi": "/tmp/clawsquad_satoshi_response.jsonl"
+    }
+    
+    while True:
+        try:
+            for agent_id, filepath in response_files.items():
+                if os.path.exists(filepath):
+                    responses = []
+                    with open(filepath, "r") as f:
+                        for line in f:
+                            line = line.strip()
+                            if line:
+                                try:
+                                    responses.append(json.loads(line))
+                                except:
+                                    pass
+                    
+                    # Clear file after reading
+                    if responses:
+                        open(filepath, "w").close()
+                        
+                        # Broadcast responses
+                        for resp in responses:
+                            await manager.broadcast_to_room(resp.get('room', 'general'), {
+                                "type": "message",
+                                "agent_id": agent_id,
+                                "content": resp.get('response', ''),
+                                "timestamp": datetime.now().isoformat(),
+                                "reply_to": resp.get('reply_to')
+                            })
+                            print(f"[Response] {agent_id}: {resp.get('response', '')[:50]}...")
+            
+            await asyncio.sleep(1)
+        except Exception as e:
+            print(f"[ResponsePoller] Error: {e}")
+            await asyncio.sleep(2)
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Start background tasks when server starts"""
+    asyncio.create_task(poll_agent_responses())
+    print("[Startup] Agent response poller started")
 
 
 # Agent tracking data
