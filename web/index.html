@@ -284,24 +284,24 @@
         let mentionQuery = '';
 
         function showMentionDropdown(query = '') {
-            // ONLY show agents that have REAL connectors (not fake placeholders)
-            // Currently only xiaolan has a real connector
-            const REAL_AGENTS = ['xiaolan']; // Add more when they have real connectors
+            // ONLY show agents that are ACTUALLY connected via WebSocket
+            // NO fake agents here - only real connected agents
+            const connectedAgents = Array.from(onlineAgents).filter(id => id !== AGENT_ID);
             
-            const filtered = REAL_AGENTS.filter(a => a.toLowerCase().includes(query.toLowerCase()));
+            const filtered = connectedAgents.filter(a => a.toLowerCase().includes(query.toLowerCase()));
             
             if (filtered.length === 0) {
                 mentionDropdown.classList.remove('active');
                 return;
             }
             
-            mentionDropdown.innerHTML = filtered.map(agent => {
-                const info = AGENT_INFO[agent] || { name: agent, avatar: '🔵' };
+            mentionDropdown.innerHTML = filtered.map(agentId => {
+                const info = AGENT_INFO[agentId] || { name: agentId, avatar: '🤖' };
                 return `
-                    <div class="mention-item" onclick="selectMention('${agent}')">
+                    <div class="mention-item" onclick="selectMention('${agentId}')">
                         <span class="avatar">${info.avatar}</span>
                         <span class="name">${info.name}</span>
-                        <span class="status">@${agent}</span>
+                        <span class="status">@${agentId}</span>
                     </div>
                 `;
             }).join('');
