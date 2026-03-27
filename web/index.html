@@ -26,9 +26,16 @@
         .message-header { display: flex; justify-content: space-between; margin-bottom: 0.375rem; font-size: 0.75rem; opacity: 0.7; }
         .message-sender { font-weight: 600; }
         .message-content { line-height: 1.5; word-break: break-word; }
-        .input-area { display: flex; gap: 0.5rem; padding: 1rem; background: #1e293b; border-top: 1px solid #334155; }
+        .input-area { display: flex; gap: 0.5rem; padding: 1rem; background: #1e293b; border-top: 1px solid #334155; position: relative; }
         .message-input { flex: 1; padding: 0.75rem 1rem; border: 1px solid #334155; border-radius: 8px; background: #0f172a; color: #f8fafc; outline: none; font-size: 1rem; }
         .message-input:focus { border-color: #3b82f6; }
+        .mention-dropdown { position: absolute; bottom: 100%; left: 1rem; right: 5rem; background: #1e293b; border: 1px solid #334155; border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 100; display: none; }
+        .mention-dropdown.active { display: block; }
+        .mention-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; cursor: pointer; transition: background 0.2s; }
+        .mention-item:hover { background: #334155; }
+        .mention-item .avatar { font-size: 1.25rem; }
+        .mention-item .name { font-weight: 600; }
+        .mention-item .status { font-size: 0.75rem; color: #10b981; margin-left: auto; }
         .send-btn { padding: 0.75rem 1.5rem; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; }
         .send-btn:hover { background: #2563eb; }
         .send-btn:disabled { background: #475569; cursor: not-allowed; }
@@ -74,7 +81,8 @@
             </div>
         </div>
         <div class="input-area">
-            <input type="text" class="message-input" id="message-input" placeholder="Type @xiaolan to mention..." disabled>
+            <div class="mention-dropdown" id="mention-dropdown"></div>
+            <input type="text" class="message-input" id="message-input" placeholder="Type @ to mention agents..." disabled>
             <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled>Send</button>
         </div>
         <div class="debug" id="debug">Connecting...</div>
@@ -263,9 +271,89 @@
             switchTab('chat', document.querySelector('.tab'));
         }
 
+        // @mention autocomplete
+        let mentionDropdown = document.getElementById('mention-dropdown');
+        let isMentioning = false;
+        let mentionQuery = '';
+
+        function showMentionDropdown(query = '') {
+            const agents = ['xiaohong', 'xiaolan', 'xiaofei', 'satoshi'];
+            const filtered = agents.filter(a => a.toLowerCase().includes(query.toLowerCase()));
+            
+            if (filtered.length === 0) {
+                mentionDropdown.classList.remove('active');
+                return;
+            }
+            
+            mentionDropdown.innerHTML = filtered.map(agent => {
+                const info = AGENT_INFO[agent];
+                return `
+                    <div class="mention-item" onclick="selectMention('${agent}')">
+                        <span class="avatar">${info?.avatar || '🤖'}</span>
+                        <span class="name">${info?.name || agent}</span>
+                        <span class="status">@${agent}</span>
+                    </div>
+                `;
+            }).join('');
+            
+            mentionDropdown.classList.add('active');
+        }
+
+        function selectMention(agentId) {
+            const input = document.getElementById('message-input');
+            const value = input.value;
+            const atIndex = value.lastIndexOf('@');
+            
+            if (atIndex !== -1) {
+                input.value = value.substring(0, atIndex) + `@${agentId} `;
+            }
+            
+            mentionDropdown.classList.remove('active');
+            isMentioning = false;
+            input.focus();
+        }
+
+        function handleMentionInput(e) {
+            const input = e.target;
+            const value = input.value;
+            const cursorPos = input.selectionStart;
+            
+            // Find if we're typing after @
+            const textBeforeCursor = value.substring(0, cursorPos);
+            const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+            
+            if (lastAtIndex !== -1) {
+                const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
+                // Check if there's a space after @ (meaning we're done with mention)
+                if (!textAfterAt.includes(' ')) {
+                    isMentioning = true;
+                    mentionQuery = textAfterAt;
+                    showMentionDropdown(mentionQuery);
+                    return;
+                }
+            }
+            
+            isMentioning = false;
+            mentionDropdown.classList.remove('active');
+        }
+
         // Event listeners
-        document.getElementById('message-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
+        document.getElementById('message-input').addEventListener('input', handleMentionInput);
+        document.getElementById('message-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                if (mentionDropdown.classList.contains('active')) {
+                    // Select first mention item
+                    const firstItem = mentionDropdown.querySelector('.mention-item');
+                    if (firstItem) {
+                        firstItem.click();
+                        e.preventDefault();
+                        return;
+                    }
+                }
+                sendMessage();
+            } else if (e.key === 'Escape') {
+                mentionDropdown.classList.remove('active');
+            }
         });
 
         // Start
