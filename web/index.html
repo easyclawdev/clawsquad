@@ -191,10 +191,13 @@
     
     <script>
         let ws = null;
-        let agentId = 'user_' + Math.random().toString(36).substr(2, 9);
+        let agentId = 'masterk';  // Hardcoded identity for Master K
         let currentTab = 'chat';
         let currentAgent = null;
         let agentsCache = [];
+        
+        // Known agents (filter out random browser users)
+        const KNOWN_AGENTS = ['xiaohong', 'xiaolan', 'xiaofei', 'satoshi', 'masterk'];
         
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -234,7 +237,9 @@
         
         function renderAgents() {
             const container = document.getElementById('agents-container');
-            container.innerHTML = agentsCache.map(agent => `
+            // Filter to only show real agents (not random browser users)
+            const realAgents = agentsCache.filter(agent => KNOWN_AGENTS.includes(agent.agent_id));
+            container.innerHTML = realAgents.map(agent => `
                 <div class="agent-card" onclick="openAgentModal('${agent.agent_id}')">
                     <div class="agent-avatar">${agent.avatar || '🤖'}</div>
                     <div class="agent-info">

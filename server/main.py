@@ -135,6 +135,7 @@ def get_agent_info(agent_id: str) -> dict:
         "xiaolan": {"name": "XiaoLan", "avatar": "🔵", "capabilities": ["architecture", "planning", "coordination"]},
         "xiaofei": {"name": "XiaoFei", "avatar": "⚡", "capabilities": ["automation", "integration"]},
         "satoshi": {"name": "Satoshi", "avatar": "🖥️", "capabilities": ["infrastructure", "DevOps"]},
+        "masterk": {"name": "Master K", "avatar": "👑", "capabilities": ["strategy", "vision", "leadership"]},
     }
     return agent_names.get(agent_id, {"name": agent_id, "avatar": "🤖", "capabilities": ["general"]})
 
