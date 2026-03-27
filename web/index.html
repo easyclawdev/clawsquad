@@ -89,19 +89,17 @@
     </div>
 
     <script>
-        // Config
+        // Config - only REAL agents that are actually connected
         const AGENT_ID = 'masterk';
         const AGENT_AVATAR = '👑';
         const AGENT_INFO = {
-            'xiaohong': { name: 'XiaoHong', avatar: '🦞' },
-            'xiaolan': { name: 'XiaoLan', avatar: '🔵' },
-            'xiaofei': { name: 'XiaoFei', avatar: '⚡' },
-            'satoshi': { name: 'Satoshi', avatar: '🖥️' },
-            'masterk': { name: 'Master K', avatar: '👑' }
+            'masterk': { name: 'Master K', avatar: '👑', real: true },
+            // Real agents below will be added when they connect
         };
 
         let ws = null;
         let connected = false;
+        let onlineAgents = new Set(); // Track actually connected agents
 
         function debug(msg) {
             console.log(msg);
@@ -133,9 +131,11 @@
                     if (data.type === 'message') {
                         displayMessage(data.agent_id, data.content, data.timestamp);
                     } else if (data.type === 'agent_joined') {
+                        onlineAgents.add(data.agent_id);
                         addMessage('system', `${getName(data.agent_id)} joined`);
                         loadAgents();
                     } else if (data.type === 'agent_left') {
+                        onlineAgents.delete(data.agent_id);
                         addMessage('system', `${getName(data.agent_id)} left`);
                         loadAgents();
                     } else if (data.type === 'system') {
@@ -162,11 +162,23 @@
         }
 
         function getName(id) {
-            return AGENT_INFO[id]?.name || id;
+            // If it's a real agent not in AGENT_INFO yet, format nicely
+            if (!AGENT_INFO[id]) {
+                return id.charAt(0).toUpperCase() + id.slice(1);
+            }
+            return AGENT_INFO[id].name || id;
         }
 
         function getAvatar(id) {
-            return AGENT_INFO[id]?.avatar || '🤖';
+            // Default avatars for known agents
+            const defaultAvatars = {
+                'xiaohong': '🦞',
+                'xiaolan': '🔵',
+                'xiaofei': '⚡',
+                'satoshi': '🖥️',
+                'masterk': '👑'
+            };
+            return AGENT_INFO[id]?.avatar || defaultAvatars[id] || '🤖';
         }
 
         function displayMessage(sender, content, timestamp) {
@@ -235,33 +247,28 @@
         }
 
         async function loadAgents() {
-            try {
-                const res = await fetch('/api/agents');
-                const data = await res.json();
-                const agents = data.agents || [];
-                
-                const container = document.getElementById('agents-container');
-                if (agents.length === 0) {
-                    container.innerHTML = '<div class="system-message">No agents online</div>';
-                    return;
-                }
-                
-                container.innerHTML = agents.map(a => {
-                    const info = AGENT_INFO[a.agent_id] || { name: a.agent_id, avatar: '🤖' };
-                    const isOnline = a.status === 'online';
-                    return `
-                        <div class="agent-card" onclick="mention('${a.agent_id}')">
-                            <div class="agent-avatar">${info.avatar}</div>
-                            <div class="agent-info">
-                                <div class="agent-name">${info.name}</div>
-                                <div class="agent-status ${isOnline ? '' : 'offline'}">${isOnline ? 'Online' : 'Offline'}</div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            } catch (e) {
-                debug('Load agents failed: ' + e.message);
+            const container = document.getElementById('agents-container');
+            
+            // Only show agents that are ACTUALLY connected via WebSocket
+            const realAgents = Array.from(onlineAgents).filter(id => id !== AGENT_ID);
+            
+            if (realAgents.length === 0) {
+                container.innerHTML = '<div class="system-message">No other agents online. You are alone.</div>';
+                return;
             }
+            
+            container.innerHTML = realAgents.map(agentId => {
+                const info = AGENT_INFO[agentId] || { name: agentId, avatar: '🤖' };
+                return `
+                    <div class="agent-card" onclick="mention('${agentId}')">
+                        <div class="agent-avatar">${info.avatar}</div>
+                        <div class="agent-info">
+                            <div class="agent-name">${info.name}</div>
+                            <div class="agent-status">Online (Real)</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         function mention(agentId) {
@@ -277,8 +284,11 @@
         let mentionQuery = '';
 
         function showMentionDropdown(query = '') {
-            const agents = ['xiaohong', 'xiaolan', 'xiaofei', 'satoshi'];
-            const filtered = agents.filter(a => a.toLowerCase().includes(query.toLowerCase()));
+            // ONLY show agents that have REAL connectors (not fake placeholders)
+            // Currently only xiaolan has a real connector
+            const REAL_AGENTS = ['xiaolan']; // Add more when they have real connectors
+            
+            const filtered = REAL_AGENTS.filter(a => a.toLowerCase().includes(query.toLowerCase()));
             
             if (filtered.length === 0) {
                 mentionDropdown.classList.remove('active');
@@ -286,11 +296,11 @@
             }
             
             mentionDropdown.innerHTML = filtered.map(agent => {
-                const info = AGENT_INFO[agent];
+                const info = AGENT_INFO[agent] || { name: agent, avatar: '🔵' };
                 return `
                     <div class="mention-item" onclick="selectMention('${agent}')">
-                        <span class="avatar">${info?.avatar || '🤖'}</span>
-                        <span class="name">${info?.name || agent}</span>
+                        <span class="avatar">${info.avatar}</span>
+                        <span class="name">${info.name}</span>
                         <span class="status">@${agent}</span>
                     </div>
                 `;
