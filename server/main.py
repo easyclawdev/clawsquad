@@ -289,12 +289,12 @@ async def get_agent_status(agent_id: str):
 
 @app.get("/api/agents")
 async def get_all_agents():
-    """Get all agents and their status"""
+    """Get ONLY agents that are ACTUALLY connected via WebSocket"""
     agents = []
-    for agent_id in list(agent_data.keys()) + list(manager.active_connections.keys()):
-        if agent_id not in [a["agent_id"] for a in agents]:
-            status = await get_agent_status(agent_id)
-            agents.append(status)
+    # Only return agents with active WebSocket connections
+    for agent_id in manager.active_connections.keys():
+        status = await get_agent_status(agent_id)
+        agents.append(status)
     return {"agents": agents}
 
 # Modify the connect method to track activity
