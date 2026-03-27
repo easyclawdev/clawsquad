@@ -3,77 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClawSquad - AI Agent Collaboration</title>
+    <title>ClawSquad</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; }
-        .app { max-width: 100%; min-height: 100vh; display: flex; flex-direction: column; }
-        /* Header */
-        .header { background: #1e293b; padding: 1rem; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-size: 1.5rem; font-weight: bold; color: #60a5fa; }
-        .status { display: flex; align-items: center; gap: 0.5rem; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; }
-        /* Main content */
-        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        /* Tabs */
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; height: 100vh; overflow: hidden; }
+        .app { display: flex; flex-direction: column; height: 100vh; }
+        .header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; background: #1e293b; border-bottom: 1px solid #334155; }
+        .logo { display: flex; align-items: center; gap: 0.5rem; font-size: 1.5rem; font-weight: bold; color: #3b82f6; }
+        .connection-status { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: #94a3b8; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; }
         .tabs { display: flex; background: #1e293b; border-bottom: 1px solid #334155; }
-        .tab { flex: 1; padding: 1rem; text-align: center; border-bottom: 3px solid transparent; cursor: pointer; }
-        .tab.active { border-bottom-color: #60a5fa; color: #60a5fa; }
-        /* Chat area */
-        .chat-area { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
-        .message { background: #1e293b; border-radius: 12px; padding: 1rem; max-width: 85%; }
-        .message.self { align-self: flex-end; background: #1d4ed8; }
+        .tab { flex: 1; padding: 1rem; text-align: center; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; color: #94a3b8; }
+        .tab:hover { background: #334155; color: #f8fafc; }
+        .tab.active { border-bottom-color: #3b82f6; color: #3b82f6; }
+        .content { flex: 1; overflow: hidden; position: relative; }
+        .tab-content { height: 100%; overflow-y: auto; padding: 1rem; }
+        .message-container { display: flex; flex-direction: column; gap: 1rem; }
+        .message { background: #1e293b; padding: 1rem; border-radius: 8px; border: 1px solid #334155; }
+        .message.self { background: #3b82f6; margin-left: auto; max-width: 70%; }
         .message-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem; color: #94a3b8; }
-        .message-sender { font-weight: bold; color: #60a5fa; }
+        .message-sender { font-weight: 600; color: #3b82f6; }
+        .message.self .message-sender { color: #f8fafc; }
         .message-content { line-height: 1.5; }
-        .mention { color: #fbbf24; font-weight: bold; }
-        /* Online agents */
-        .agents-list { padding: 1rem; background: #1e293b; border-radius: 12px; margin: 1rem; }
-        .agent { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border-bottom: 1px solid #334155; }
-        .agent:last-child { border-bottom: none; }
-        .agent-avatar { width: 40px; height: 40px; border-radius: 50%; background: #475569; display: flex; align-items: center; justify-content: center; }
+        .input-area { display: flex; gap: 0.5rem; padding: 1rem; background: #1e293b; border-top: 1px solid #334155; }
+        .message-input { flex: 1; padding: 0.75rem 1rem; border: 1px solid #334155; border-radius: 8px; background: #0f172a; color: #f8fafc; outline: none; }
+        .message-input:focus { border-color: #3b82f6; }
+        .send-btn { padding: 0.75rem 1.5rem; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .send-btn:hover { background: #2563eb; }
+        .agents-list { display: flex; flex-direction: column; gap: 0.75rem; }
+        .agent-card { display: flex; align-items: center; gap: 1rem; padding: 1rem; background: #1e293b; border-radius: 12px; border: 1px solid #334155; cursor: pointer; transition: all 0.2s; }
+        .agent-card:hover { background: #334155; border-color: #3b82f6; transform: translateX(4px); }
+        .agent-avatar { width: 48px; height: 48px; border-radius: 50%; background: #3b82f6; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
         .agent-info { flex: 1; }
-        .agent-name { font-weight: bold; }
-        .agent-status { font-size: 0.875rem; color: #94a3b8; }
-        /* Input area */
-        .input-area { padding: 1rem; background: #1e293b; border-top: 1px solid #334155; display: flex; gap: 0.5rem; }
-        .message-input { flex: 1; padding: 0.75rem; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; }
-        .send-btn { padding: 0.75rem 1.5rem; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; }
-        /* Tasks */
-        .tasks-list { padding: 1rem; }
-        .task { background: #1e293b; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
-        .task-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
-        .task-title { font-weight: bold; color: #60a5fa; }
-        .task-status { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; }
-        .status-pending { background: #f59e0b; color: #000; }
-        .status-in-progress { background: #3b82f6; color: white; }
+        .agent-name { font-weight: 600; font-size: 1rem; }
+        .agent-status { font-size: 0.875rem; color: #10b981; }
+        .agent-status.offline { color: #94a3b8; }
+        .tasks-list { display: flex; flex-direction: column; gap: 0.75rem; }
+        .task-card { background: #1e293b; padding: 1rem; border-radius: 12px; border: 1px solid #334155; }
+        .task-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .task-title { font-weight: 600; }
+        .task-status { padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
         .status-completed { background: #10b981; color: white; }
-        /* Mobile optimizations */
-        @media (max-width: 640px) {
-            .message { max-width: 90%; }
-            .input-area { flex-direction: column; }
-            .send-btn { width: 100%; }
-        }
+        .status-in-progress { background: #3b82f6; color: white; }
+        .status-pending { background: #f59e0b; color: white; }
+        .mention { background: #3b82f6; padding: 0.125rem 0.375rem; border-radius: 4px; color: white; }
+        
+        /* Agent Detail Modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: #1e293b; border-radius: 16px; border: 1px solid #334155; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
+        .modal-header { display: flex; align-items: center; gap: 1rem; padding: 1.5rem; border-bottom: 1px solid #334155; }
+        .modal-avatar { width: 64px; height: 64px; border-radius: 50%; background: #3b82f6; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+        .modal-title { flex: 1; }
+        .modal-name { font-size: 1.5rem; font-weight: bold; }
+        .modal-status { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem; }
+        .status-badge { padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .status-online { background: #10b981; color: white; }
+        .status-offline { background: #6b7280; color: white; }
+        .modal-close { background: none; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer; padding: 0.5rem; }
+        .modal-close:hover { color: #f8fafc; }
+        .modal-body { padding: 1.5rem; }
+        .info-section { margin-bottom: 1.5rem; }
+        .info-label { font-size: 0.875rem; color: #94a3b8; margin-bottom: 0.5rem; }
+        .info-value { font-size: 1rem; }
+        .progress-bar { height: 8px; background: #334155; border-radius: 4px; overflow: hidden; margin-top: 0.5rem; }
+        .progress-fill { height: 100%; background: #3b82f6; border-radius: 4px; transition: width 0.3s; }
+        .capabilities { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .capability-tag { padding: 0.375rem 0.75rem; background: #334155; border-radius: 8px; font-size: 0.875rem; }
+        .activity-list { display: flex; flex-direction: column; gap: 0.75rem; }
+        .activity-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: #0f172a; border-radius: 8px; }
+        .activity-time { font-size: 0.75rem; color: #94a3b8; white-space: nowrap; }
+        .activity-action { font-size: 0.875rem; }
+        .modal-actions { display: flex; gap: 0.75rem; padding: 1rem 1.5rem; border-top: 1px solid #334155; }
+        .modal-btn { flex: 1; padding: 0.75rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-secondary { background: #334155; color: #f8fafc; }
+        .btn-secondary:hover { background: #475569; }
     </style>
 </head>
 <body>
     <div class="app">
         <div class="header">
             <div class="logo">🦞 ClawSquad</div>
-            <div class="status">
-                <div class="status-dot"></div>
-                <span id="connection-status">Connecting...</span>
+            <div class="connection-status">
+                <span class="status-dot"></span>
+                <span id="connection-status">Disconnected</span>
             </div>
         </div>
-        <div class="main">
-            <div class="tabs">
-                <div class="tab active" onclick="switchTab('chat')">💬 Chat</div>
-                <div class="tab" onclick="switchTab('agents')">👥 Agents</div>
-                <div class="tab" onclick="switchTab('tasks')">✅ Tasks</div>
-            </div>
-            <!-- Chat Tab -->
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('chat')">💬 Chat</div>
+            <div class="tab" onclick="switchTab('agents')">👥 Agents</div>
+            <div class="tab" onclick="switchTab('tasks')">✅ Tasks</div>
+        </div>
+        <div class="content">
             <div id="chat-tab" class="tab-content">
-                <div class="chat-area" id="message-container">
+                <div class="message-container" id="message-container">
                     <div class="message">
                         <div class="message-header">
                             <span class="message-sender">System</span>
@@ -82,45 +107,98 @@
                         <div class="message-content">Welcome to ClawSquad! Start collaborating with your AI agents.</div>
                     </div>
                 </div>
-                <div class="input-area">
-                    <input type="text" class="message-input" id="message-input" placeholder="Type a message... Use @ to mention agents" />
-                    <button class="send-btn" onclick="sendMessage()">Send</button>
-                </div>
             </div>
-            <!-- Agents Tab -->
             <div id="agents-tab" class="tab-content" style="display: none;">
                 <div class="agents-list" id="agents-container">
-                    <div class="agent">
-                        <div class="agent-avatar">🤖</div>
-                        <div class="agent-info">
-                            <div class="agent-name">xiaohong</div>
-                            <div class="agent-status">Online</div>
-                        </div>
-                    </div>
+                    <!-- Agents loaded dynamically -->
                 </div>
             </div>
-            <!-- Tasks Tab -->
             <div id="tasks-tab" class="tab-content" style="display: none;">
                 <div class="tasks-list" id="tasks-container">
-                    <div class="task">
+                    <div class="task-card">
                         <div class="task-header">
                             <div class="task-title">Implement WebSocket server</div>
                             <div class="task-status status-completed">Completed</div>
                         </div>
-                        <div>Assigned to: @xiaohong</div>
-                        <div>Created by: System</div>
+                        <div style="font-size: 0.875rem; color: #94a3b8; margin-top: 0.5rem;">Assigned to: @xiaohong</div>
+                        <div style="font-size: 0.875rem; color: #94a3b8;">Created by: System</div>
                     </div>
                 </div>
             </div>
         </div>
+        <div class="input-area" id="chat-input">
+            <input type="text" class="message-input" id="message-input" placeholder="Type a message... Use @ to mention agents">
+            <button class="send-btn" onclick="sendMessage()">Send</button>
+        </div>
     </div>
+    
+    <!-- Agent Detail Modal -->
+    <div class="modal-overlay" id="agent-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-avatar" id="modal-avatar">🤖</div>
+                <div class="modal-title">
+                    <div class="modal-name" id="modal-name">Agent Name</div>
+                    <div class="modal-status">
+                        <span class="status-badge" id="modal-status-badge">Online</span>
+                        <span style="color: #94a3b8;" id="modal-uptime">2h 15m</span>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="info-section">
+                    <div class="info-label">Current Task</div>
+                    <div class="info-value" id="modal-task">Building Agent Detail View</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="modal-progress" style="width: 80%;"></div>
+                    </div>
+                </div>
+                <div class="info-section">
+                    <div class="info-label">Capabilities</div>
+                    <div class="capabilities" id="modal-capabilities">
+                        <span class="capability-tag">Coding</span>
+                        <span class="capability-tag">Deployment</span>
+                        <span class="capability-tag">Debugging</span>
+                    </div>
+                </div>
+                <div class="info-section">
+                    <div class="info-label">Task Stats</div>
+                    <div style="display: flex; gap: 2rem;">
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: bold; color: #3b82f6;" id="modal-assigned">3</div>
+                            <div style="font-size: 0.875rem; color: #94a3b8;">Assigned</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;" id="modal-completed">47</div>
+                            <div style="font-size: 0.875rem; color: #94a3b8;">Completed</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="info-section">
+                    <div class="info-label">Recent Activity</div>
+                    <div class="activity-list" id="modal-activity">
+                        <!-- Activity loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn btn-primary" onclick="chatWithAgent()">💬 Direct Chat</button>
+                <button class="modal-btn btn-secondary" onclick="assignTask()">📝 Assign Task</button>
+            </div>
+        </div>
+    </div>
+    
     <script>
         let ws = null;
         let agentId = 'user_' + Math.random().toString(36).substr(2, 9);
         let currentTab = 'chat';
+        let currentAgent = null;
+        let agentsCache = [];
+        
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const host = window.location.hostname || 'localhost';
+            const host = window.location.hostname || '72.62.64.94';
             const port = window.location.port || '8000';
             const wsUrl = `${protocol}//${host}:${port}/ws/${agentId}`;
             ws = new WebSocket(wsUrl);
@@ -128,6 +206,7 @@
                 console.log('WebSocket connected');
                 document.getElementById('connection-status').textContent = 'Connected';
                 document.querySelector('.status-dot').style.background = '#10b981';
+                loadAgents();
             };
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
@@ -141,34 +220,121 @@
             };
             ws.onerror = (error) => { console.error('WebSocket error:', error); };
         }
-        function handleMessage(data) {
-            switch(data.type) {
-                case 'message': addMessage(data.agent_id, data.content, data.timestamp, data.mentions); break;
-                case 'agent_joined': addSystemMessage(`${data.agent_id} joined the chat`); break;
-                case 'agent_left': addSystemMessage(`${data.agent_id} left the chat`); break;
-                case 'mention': alert(`You were mentioned by ${data.from}: ${data.content}`); break;
-                case 'task_assigned': alert(`New task assigned: ${data.task_title}`); break;
+        
+        async function loadAgents() {
+            try {
+                const response = await fetch('/api/agents');
+                const data = await response.json();
+                agentsCache = data.agents || [];
+                renderAgents();
+            } catch (e) {
+                console.error('Failed to load agents:', e);
             }
         }
-        function addMessage(sender, content, timestamp, mentions = []) {
+        
+        function renderAgents() {
+            const container = document.getElementById('agents-container');
+            container.innerHTML = agentsCache.map(agent => `
+                <div class="agent-card" onclick="openAgentModal('${agent.agent_id}')">
+                    <div class="agent-avatar">${agent.avatar || '🤖'}</div>
+                    <div class="agent-info">
+                        <div class="agent-name">${agent.name || agent.agent_id}</div>
+                        <div class="agent-status ${agent.status === 'online' ? '' : 'offline'}">${agent.status === 'online' ? 'Online' : 'Offline'}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function openAgentModal(agentId) {
+            currentAgent = agentId;
+            try {
+                const response = await fetch(`/api/agents/${agentId}/status`);
+                const agent = await response.json();
+                
+                document.getElementById('modal-avatar').textContent = agent.avatar || '🤖';
+                document.getElementById('modal-name').textContent = agent.name || agent.agent_id;
+                document.getElementById('modal-status-badge').textContent = agent.status === 'online' ? 'Online' : 'Offline';
+                document.getElementById('modal-status-badge').className = 'status-badge ' + (agent.status === 'online' ? 'status-online' : 'status-offline');
+                document.getElementById('modal-uptime').textContent = agent.uptime || '0m';
+                document.getElementById('modal-task').textContent = agent.current_task || 'No active task';
+                document.getElementById('modal-progress').style.width = agent.task_progress || '0%';
+                document.getElementById('modal-assigned').textContent = agent.assigned_tasks || 0;
+                document.getElementById('modal-completed').textContent = agent.completed_tasks || 0;
+                
+                // Capabilities
+                const capsContainer = document.getElementById('modal-capabilities');
+                capsContainer.innerHTML = (agent.capabilities || []).map(cap => 
+                    `<span class="capability-tag">${cap}</span>`
+                ).join('');
+                
+                // Activity
+                const activityContainer = document.getElementById('modal-activity');
+                activityContainer.innerHTML = (agent.recent_activity || []).map(act => {
+                    const time = new Date(act.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    return `<div class="activity-item"><span class="activity-time">${time}</span><span class="activity-action">${act.action}</span></div>`;
+                }).join('') || '<div style="color: #94a3b8; padding: 1rem;">No recent activity</div>';
+                
+                document.getElementById('agent-modal').classList.add('active');
+            } catch (e) {
+                console.error('Failed to load agent details:', e);
+            }
+        }
+        
+        function closeModal() {
+            document.getElementById('agent-modal').classList.remove('active');
+            currentAgent = null;
+        }
+        
+        function chatWithAgent() {
+            if (currentAgent) {
+                closeModal();
+                switchTab('chat');
+                const input = document.getElementById('message-input');
+                input.value = `@${currentAgent} `;
+                input.focus();
+            }
+        }
+        
+        function assignTask() {
+            if (currentAgent) {
+                alert(`Assign task to ${currentAgent} - Feature coming soon!`);
+            }
+        }
+        
+        function handleMessage(data) {
+            switch(data.type) {
+                case 'message': addMessage(data.agent_id, data.content, data.timestamp); break;
+                case 'agent_joined': 
+                    addSystemMessage(`${data.agent_id} joined the chat`); 
+                    loadAgents();
+                    break;
+                case 'agent_left': 
+                    addSystemMessage(`${data.agent_id} left the chat`); 
+                    loadAgents();
+                    break;
+            }
+        }
+        
+        function addMessage(sender, content, timestamp) {
             const container = document.getElementById('message-container');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${sender === agentId ? 'self' : ''}`;
-            let formattedContent = content;
-            mentions.forEach(mention => { formattedContent = formattedContent.replace(new RegExp(`@${mention}`, 'g'), `<span class="mention">@${mention}</span>`); });
             const time = new Date(timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            messageDiv.innerHTML = `<div class="message-header"><span class="message-sender">${sender}</span><span>${time}</span></div><div class="message-content">${formattedContent}</div>`;
+            messageDiv.innerHTML = `<div class="message-header"><span class="message-sender">${sender}</span><span>${time}</span></div><div class="message-content">${content}</div>`;
             container.appendChild(messageDiv);
             container.scrollTop = container.scrollHeight;
         }
+        
         function addSystemMessage(content) {
             const container = document.getElementById('message-container');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
-            messageDiv.innerHTML = `<div class="message-header"><span class="message-sender">System</span><span>${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></div><div class="message-content">${content}</div>`;
+            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            messageDiv.innerHTML = `<div class="message-header"><span class="message-sender">System</span><span>${time}</span></div><div class="message-content">${content}</div>`;
             container.appendChild(messageDiv);
             container.scrollTop = container.scrollHeight;
         }
+        
         function sendMessage() {
             const input = document.getElementById('message-input');
             const content = input.value.trim();
@@ -177,15 +343,20 @@
             input.value = '';
             input.focus();
         }
+        
         function switchTab(tabName) {
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelector(`.tab[onclick*="${tabName}"]`).classList.add('active');
+            document.querySelector(`.tab:nth-child(${tabName === 'chat' ? 1 : tabName === 'agents' ? 2 : 3})`).classList.add('active');
             document.querySelectorAll('.tab-content').forEach(content => content.style.display = 'none');
             document.getElementById(`${tabName}-tab`).style.display = 'block';
             currentTab = tabName;
+            if (tabName === 'agents') loadAgents();
         }
+        
         document.getElementById('message-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
-        window.addEventListener('load', () => { connectWebSocket(); document.querySelector('.agent-name').textContent = agentId; });
+        document.getElementById('agent-modal').addEventListener('click', (e) => { if (e.target.id === 'agent-modal') closeModal(); });
+        window.addEventListener('load', () => { connectWebSocket(); });
+        setInterval(loadAgents, 10000);
     </script>
 </body>
 </html>
