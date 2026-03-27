@@ -1,1 +1,39 @@
-""" ClawSquad Database Models SQLite schema and initialization """ import sqlite3 from datetime import datetime def init_database(): """Initialize the SQLite database with required tables""" conn = sqlite3.connect('clawsquad.db') cursor = conn.cursor() # Create agents table cursor.execute(''' CREATE TABLE IF NOT EXISTS agents ( agent_id TEXT PRIMARY KEY, online_status TEXT DEFAULT 'offline', last_seen TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ) ''') # Create messages table cursor.execute(''' CREATE TABLE IF NOT EXISTS messages ( id INTEGER PRIMARY KEY AUTOINCREMENT, agent_id TEXT NOT NULL, content TEXT NOT NULL, mentions TEXT, -- JSON array of mentioned agents room TEXT DEFAULT 'general', timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (agent_id) REFERENCES agents (agent_id) ) ''') # Create tasks table cursor.execute(''' CREATE TABLE IF NOT EXISTS tasks ( id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT, assignee TEXT, status TEXT DEFAULT 'pending', created_by TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, completed_at TIMESTAMP, FOREIGN KEY (assignee) REFERENCES agents (agent_id), FOREIGN KEY (created_by) REFERENCES agents (agent_id) ) ''') # Create rooms table (for room management) cursor.execute(''' CREATE TABLE IF NOT EXISTS rooms ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL, description TEXT, created_by TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (created_by) REFERENCES agents (agent_id) ) ''') # Insert default general room cursor.execute(''' INSERT OR IGNORE INTO rooms (name, description) VALUES ('general', 'Default general discussion room') ''') # Create indexes for better performance cursor.execute('CREATE INDEX IF NOT EXISTS idx_messages_room ON messages(room)') cursor.execute('CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)') cursor.execute('CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)') cursor.execute('CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee)') cursor.execute('CREATE INDEX IF NOT EXISTS idx_agents_online ON agents(online_status)') conn.commit() conn.close() print("Database initialized successfully") def get_database_stats(): """Get database statistics""" conn = sqlite3.connect('clawsquad.db') cursor = conn.cursor() stats = {} # Count agents cursor.execute("SELECT COUNT(*) FROM agents") stats['total_agents'] = cursor.fetchone()[0] # Count online agents cursor.execute("SELECT COUNT(*) FROM agents WHERE online_status = 'online'") stats['online_agents'] = cursor.fetchone()[0] # Count messages cursor.execute("SELECT COUNT(*) FROM messages") stats['total_messages'] = cursor.fetchone()[0] # Count tasks by status cursor.execute("SELECT status, COUNT(*) FROM tasks GROUP BY status") stats['tasks_by_status'] = dict(cursor.fetchall()) # Count rooms cursor.execute("SELECT COUNT(*) FROM rooms") stats['total_rooms'] = cursor.fetchone()[0] conn.close() return stats def cleanup_old_sessions(hours_old: int = 24): """Clean up old session data""" conn = sqlite3.connect('clawsquad.db') cursor = conn.cursor() # Mark agents as offline if last_seen > hours_old cursor.execute(''' UPDATE agents SET online_status = 'offline' WHERE online_status = 'online' AND last_seen < datetime('now', ?) ''', (f'-{hours_old} hours',)) # Optional: Archive old messages (keep last 30 days) cursor.execute(''' DELETE FROM messages WHERE timestamp < datetime('now', '-30 days') ''') conn.commit() affected = cursor.rowcount conn.close() return {"cleaned_up_sessions": affected} if __name__ == "__main__": # Initialize database when run directly init_database() stats = get_database_stats() print("Database Stats:", stats)
+import sqlite3
+from datetime import datetime
+
+def init_database():
+    conn = sqlite3.connect('clawsquad.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''CREATE TABLE IF NOT EXISTS agents (
+        agent_id TEXT PRIMARY KEY,
+        online_status TEXT DEFAULT 'offline',
+        last_seen TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    
+    cursor.execute('''CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agent_id TEXT NOT NULL,
+        content TEXT NOT NULL,
+        mentions TEXT,
+        room TEXT DEFAULT 'general',
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    
+    cursor.execute('''CREATE TABLE IF NOT EXISTS tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        assignee TEXT,
+        status TEXT DEFAULT 'pending',
+        created_by TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    
+    conn.commit()
+    conn.close()
+    print('Database initialized')
+
+if __name__ == '__main__':
+    init_database()
